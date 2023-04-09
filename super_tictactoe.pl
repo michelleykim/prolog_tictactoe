@@ -2,41 +2,50 @@
 % board([[-,-,-],[-,-,-],[-,-,-]]).
 
 % display the board
-display_board([Row1, Row2, Row3]) :-
+display_mini_board([Row1, Row2, Row3]) :-
     display_row(Row1), nl,
     display_row(Row2), nl,
     display_row(Row3), nl.
 
-display_row([Symbol1, Symbol2, Symbol3]) :-
-    write(' '), write(Symbol1), write(' '), write(Symbol2), write(' '), write(Symbol3).
+display_row([Player1, Player2, Player3]) :-
+    write(' '), write(Player1), write(' '), write(Player2), write(' '), write(Player3).
+
+display_gigaboard([Row1, Row2, Row3]) :-
+    display_gigarow(Row1), nl, nl,
+    display_gigarow(Row2), nl, nl,
+    display_gigarow(Row3), nl, nl.
+
+display_gigarow([Player1, Player2, Player3]) :-
+    write('  '), write(Player1), write('  '), write(Player2), write('  '), write(Player3).
+
 
 % check for winning positions
-win_position(Symbol, Board) :- 
-    win_row(Symbol, Board);
-    win_column(Symbol, Board);
-    win_diagonal(Symbol, Board).
+win_position(Player, Board) :- 
+    win_row(Player, Board);
+    win_column(Player, Board);
+    win_diagonal(Player, Board).
 
-win_row(Symbol, Board) :-
-    member([Symbol, Symbol, Symbol], Board).
+win_row(Player, Board) :-
+    member([Player, Player, Player], Board).
 
-win_column(Symbol, Board) :-
-    nth0(0, Board, [Symbol, _, _]),
-    nth0(1, Board, [Symbol, _, _]),
-    nth0(2, Board, [Symbol, _, _]);
-    nth0(0, Board, [_, Symbol, _]),
-    nth0(1, Board, [_, Symbol, _]),
-    nth0(2, Board, [_, Symbol, _]);
-    nth0(0, Board, [_, _, Symbol]),
-    nth0(1, Board, [_, _, Symbol]),
-    nth0(2, Board, [_, _, Symbol]).
+win_column(Player, Board) :-
+    nth0(0, Board, [Player, _, _]),
+    nth0(1, Board, [Player, _, _]),
+    nth0(2, Board, [Player, _, _]);
+    nth0(0, Board, [_, Player, _]),
+    nth0(1, Board, [_, Player, _]),
+    nth0(2, Board, [_, Player, _]);
+    nth0(0, Board, [_, _, Player]),
+    nth0(1, Board, [_, _, Player]),
+    nth0(2, Board, [_, _, Player]).
 
-win_diagonal(Symbol, Board) :-
-    nth0(0, Board, [Symbol, _, _]),
-    nth0(1, Board, [_, Symbol, _]),
-    nth0(2, Board, [_, _, Symbol]);
-    nth0(0, Board, [_, _, Symbol]),
-    nth0(1, Board, [_, Symbol, _]),
-    nth0(2, Board, [Symbol, _, _]).
+win_diagonal(Player, Board) :-
+    nth0(0, Board, [Player, _, _]),
+    nth0(1, Board, [_, Player, _]),
+    nth0(2, Board, [_, _, Player]);
+    nth0(0, Board, [_, _, Player]),
+    nth0(1, Board, [_, Player, _]),
+    nth0(2, Board, [Player, _, _]).
 
 % check for valid moves
 check_valid(Board, Row, Column) :-
@@ -46,9 +55,9 @@ check_valid(Board, Row, Column) :-
     nth0(Column, Rows, '-').
 
 % make a move
-replace(Row, Column, Symbol, Board, NewBoard) :-
+replace(Row, Column, Player, Board, NewBoard) :-
     nth0(Row, Board, Rows),
-    replace_elem(Rows, Column, Symbol, NewRow),
+    replace_elem(Rows, Column, Player, NewRow),
     replace_elem(Board, Row, NewRow, NewBoard).
 
 % replace an element in a list to another
@@ -64,15 +73,29 @@ tie_position([Row1, Row2, Row3]) :-
     \+ member(-, Row2),
     \+ member(-, Row3).
 
+% tie breaker
+break_tie(Winner) :-
+	write('Winner is randomly chosen.'), nl,
+	random_member(X, ['O','X']),
+    Winner = X,
+	declare_winner(X).
+
 % declare winner
-declare_winner(Symbol) :-
-    write('Player '), write(Symbol), write(' wins!'), nl.
+declare_winner(Player) :-
+    write('Player '), write(Player), write(' wins the SUPER tic-tac-toe!'), nl.
+
+declare_mini_winner(Player) :-
+    write('Player '), write(Player), write(' wins the mini tic-tac-toe!'), nl.
 
 % declare start of turn
-declare_turn(Symbol) :-
-    write('Player '), write(Symbol), write(' turn.'), nl.
+declare_mini_turn(Player) :-
+    write('Player '), write(Player), write('\'s turn.'), nl.
 
-% parse user input
+% declare gigaturn
+declare_gigaturn(Player) :-
+    write('Player '), write(Player), write('\'s gigaturn. Choose the board.'), nl.
+
+% parse user input for move
 parse_input(Board, Row, Column) :-
     read_row(Row),
     read_column(Column),
@@ -88,32 +111,57 @@ read_column(Column) :-
     read_string(user_input, "\n", "\r", _, ColumnStr),
     (number_string(Column, ColumnStr) -> true ; (write('Invalid column input!'), nl, fail)).
 
-switch_player(Symbol, NewSymbol) :-
+switch_player(Player, NewPlayer) :-
     (
-        Symbol = 'X',
-        NewSymbol = 'O'
+        Player = 'X',
+        NewPlayer = 'O'
     ;
-        Symbol = 'O',
-        NewSymbol = 'X'
+        Player = 'O',
+        NewPlayer = 'X'
     ).
 
-play :-
-    play([[-,-,-],[-,-,-],[-,-,-]], 'X').
+find_winner(Board, Player) :-
+    win_position(Player, Board).
 
-play(Board, Symbol) :-
-    declare_turn(Symbol),
-    display_board(Board),
+play :- play([[-,-,-],[-,-,-],[-,-,-]], 'X').
+
+play(GigaBoard, Player) :-
+    declare_gigaturn(Player),
+    display_gigaboard(GigaBoard),
+    % choose miniboard
     repeat,
-    parse_input(Board, Row, Column),
-    (check_valid(Board, Row, Column) -> true ; (write('Invalid move!'), nl, fail)),
+    parse_input(GigaBoard, Row, Column),
     !,
-    replace(Row, Column, Symbol, Board, NewBoard),
+    random_member(RandomPlayer, ['O','X']),
+    mini_play([[-,-,-],[-,-,-],[-,-,-]], RandomPlayer, Winner),
+    % reflect result on gigaboard
+    replace(Row, Column, Winner, GigaBoard, NewGigaBoard),
+    % continue until gigaboard has a winner
     (
-        win_position(Symbol, NewBoard),
-        declare_winner(Symbol)
-    ;   tie_position(NewBoard),
+        win_position(Player, NewGigaBoard),
+        declare_winner(Player)
+    ;   tie_position(NewGigaBoard),
         write('Tie!')
     ;
-        switch_player(Symbol, NewSymbol),
-        play(NewBoard, NewSymbol)
+        switch_player(Player, NewPlayer),
+        play(NewGigaBoard, NewPlayer)
+    ).
+
+mini_play(Board, Player, Winner) :-
+    declare_mini_turn(Player),
+    display_mini_board(Board),
+    repeat,
+    parse_input(Board, Row, Column),
+    !,
+    replace(Row, Column, Player, Board, NewBoard),
+    (
+        win_position(Player, NewBoard),
+        declare_mini_winner(Player),
+        Winner = Player
+    ;   tie_position(NewBoard),
+        write('Tie!'), nl,
+        break_tie(Winner)
+    ;
+        switch_player(Player, NewPlayer),
+        mini_play(NewBoard, NewPlayer, Winner)
     ).
