@@ -1,5 +1,6 @@
 % board is a list of lists
-% board([[-,-,-],[-,-,-],[-,-,-]]).
+board([[-,-,-],[-,-,-],[-,-,-]]).
+score([[4,2,4],[2,6,2],[4,2,4]]).
 
 % display the board
 display_mini_board([Row1, Row2, Row3]) :-
@@ -74,11 +75,33 @@ tie_position([Row1, Row2, Row3]) :-
     \+ member(-, Row3).
 
 % tie breaker
-break_tie(Winner) :-
-	write('Winner is randomly chosen.'), nl,
-	random_member(X, ['O','X']),
-    Winner = X,
-	declare_winner(X).
+break_tie(Board, ScoreBoard, Winner) :-
+	write('Winner is chosen based off scores off from claimed cells.'), nl,
+	player_score('X', Board, ScoreBoard, XScore),
+    player_score('O', Board, ScoreBoard, OScore),
+    write('X score: '), write(XScore), nl,
+    write('O score: '), write(OScore), nl,
+    (
+        XScore > OScore,
+        Winner = 'X'
+    ;
+        XScore < OScore,
+        Winner = 'O'
+    ),
+	declare_winner(Winner).
+
+player_score(_, [], [], 0).
+player_score(Player, [Row|Rows], [ScoreRow|ScoreRows], Score) :-
+    row_score(Player, Row, ScoreRow, RowScore),
+    player_score(Player, Rows, ScoreRows, AccScore),
+    Score is RowScore + AccScore.
+
+row_score(_, [], [], 0).
+row_score(Player, [Player|Cols], [Score|ScoreCols], FinalScore) :-
+    row_score(Player, Cols, ScoreCols, AccScore),
+    FinalScore is AccScore + Score.
+row_score(Player, [_|Cols], [_|ScoreCols], Score) :-
+    row_score(Player, Cols, ScoreCols, Score).
 
 % declare winner
 declare_winner(Player) :-
@@ -123,7 +146,9 @@ switch_player(Player, NewPlayer) :-
 find_winner(Board, Player) :-
     win_position(Player, Board).
 
-play :- play([[-,-,-],[-,-,-],[-,-,-]], 'X').
+play :- 
+    board(Board),
+    play(Board, 'X').
 
 play(GigaBoard, Player) :-
     declare_gigaturn(Player),
@@ -133,7 +158,8 @@ play(GigaBoard, Player) :-
     parse_input(GigaBoard, Row, Column),
     !,
     random_member(RandomPlayer, ['O','X']),
-    mini_play([[-,-,-],[-,-,-],[-,-,-]], RandomPlayer, Winner),
+    board(MiniBoard),
+    mini_play(MiniBoard, RandomPlayer, Winner),
     % reflect result on gigaboard
     replace(Row, Column, Winner, GigaBoard, NewGigaBoard),
     % continue until gigaboard has a winner
@@ -160,7 +186,8 @@ mini_play(Board, Player, Winner) :-
         Winner = Player
     ;   tie_position(NewBoard),
         write('Tie!'), nl,
-        break_tie(Winner)
+        score(ScoreBoard),
+        break_tie(NewBoard, ScoreBoard, Winner)
     ;
         switch_player(Player, NewPlayer),
         mini_play(NewBoard, NewPlayer, Winner)
